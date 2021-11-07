@@ -1,4 +1,6 @@
 import math
+import os
+
 from PyQt5.Qt import QWIDGETSIZE_MAX
 from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLabel, QGridLayout, QFileDialog
@@ -57,7 +59,7 @@ class CreateWindow(QWidget):
         self.grid = QGridLayout()
 
         self.setGeometry(200, 50, 800, 500)
-        self.setMinimumSize(250, 250)
+        self.setMinimumSize(300, 300)
 
         self.spacing = 3
         self.filename = None
@@ -121,12 +123,15 @@ class CreateWindow(QWidget):
 
     def allowResizeAndClearPoints(self):
         self.setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-        self.setMinimumSize(250, 250)
+        self.setMinimumSize(300, 300)
 
         self.arr_input_pic1_points = []
         self.arr_input_pic2_points = []
         self.pic1.clearPoints()
         self.paint = False
+
+        if os.path.exists("temp.jpeg"):
+            os.remove("temp.jpeg")
 
     def clear(self):
         # FIX WINDOW SIZE -> CHOUSE
@@ -246,6 +251,8 @@ class CreateWindow(QWidget):
         self.setLayout(self.grid)
         self.pic2.setVisible(True)
 
+        if os.path.exists("temp.jpeg"):
+            os.remove("temp.jpeg")
         self.ez_alg = False
         self.button_form.setVisible(False)
 
@@ -259,24 +266,29 @@ class CreateWindow(QWidget):
             for y in range(final_image.size[1]):
                 cur_p = np.array([x, y, 1])
                 M = ObrMatrix.dot(cur_p)
+                Mx = M[0]
+                My = M[1]
 
                 r, g, b = 255, 255, 255
-                if 0 <= M[0] < image.size[0] and 0 <= M[1] < image.size[1]:
+                if 0 <= M[0] <= image.size[0] and 0 <= M[1] <= image.size[1]:
                     # math.ceil() /\ | math.floor() \/ | x - M[0] | y -M[1]
-                    IxyPxl = list(rgb_im.getpixel((math.floor(M[0]), math.floor(M[1]))))
-                    IXyPxl = list(rgb_im.getpixel((math.ceil(M[0]), math.floor(M[1]))))
-                    IxYPxl = list(rgb_im.getpixel((math.floor(M[0]), math.ceil(M[1]))))
-                    IXYPxl = list(rgb_im.getpixel((math.ceil(M[0]), math.ceil(M[1]))))
+                    IxyPxl = list(rgb_im.getpixel((math.floor(Mx), math.floor(My))))
+                    IXyPxl = list(rgb_im.getpixel((math.ceil(Mx), math.floor(My))))
+                    IxYPxl = list(rgb_im.getpixel((math.floor(Mx), math.ceil(My))))
+                    IXYPxl = list(rgb_im.getpixel((math.ceil(Mx), math.ceil(My))))
 
-                    IxyRed = (IxyPxl[0] * (math.ceil(M[0]) - M[0]) + IXyPxl[0] * (M[0] - math.floor(M[0]))) * (
-                            math.ceil(M[1]) - M[1]) + (IxYPxl[0] * (math.ceil(M[0]) - M[0]) + IXYPxl[0] * (
-                            M[0] - math.floor(M[0]))) * (M[1] - math.floor(M[1]))
-                    IxyGreen = (IxyPxl[1] * (math.ceil(M[0]) - M[0]) + IXyPxl[1] * (M[0] - math.floor(M[0]))) * (
-                            math.ceil(M[1]) - M[1]) + (IxYPxl[1] * (math.ceil(M[0]) - M[0]) + IXYPxl[1] * (
-                            M[0] - math.floor(M[0]))) * (M[1] - math.floor(M[1]))
-                    IxyBlue = (IxyPxl[2] * (math.ceil(M[0]) - M[0]) + IXyPxl[2] * (M[0] - math.floor(M[0]))) * (
-                            math.ceil(M[1]) - M[1]) + (IxYPxl[2] * (math.ceil(M[0]) - M[0]) + IXYPxl[2] * (
-                            M[0] - math.floor(M[0]))) * (M[1] - math.floor(M[1]))
+                    IxyRed = (IxyPxl[0] * (math.ceil(Mx) - Mx) + IXyPxl[0] * (Mx - math.floor(M[0]))) * (
+                            math.ceil(My) - My) + (
+                                     IxYPxl[0] * (math.ceil(Mx) - Mx) + IXYPxl[0] * (Mx - math.floor(Mx))) * (
+                                     My - math.floor(My))
+                    IxyGreen = (IxyPxl[1] * (math.ceil(Mx) - Mx) + IXyPxl[1] * (Mx - math.floor(M[0]))) * (
+                                math.ceil(My) - My) + (
+                                           IxYPxl[1] * (math.ceil(Mx) - Mx) + IXYPxl[1] * (Mx - math.floor(Mx))) * (
+                                           My - math.floor(My))
+                    IxyBlue = (IxyPxl[2] * (math.ceil(Mx) - Mx) + IXyPxl[2] * (Mx - math.floor(M[0]))) * (
+                                math.ceil(My) - My) + (
+                                          IxYPxl[2] * (math.ceil(Mx) - Mx) + IXYPxl[2] * (Mx - math.floor(Mx))) * (
+                                          My - math.floor(My))
                     r, g, b = (IxyRed, IxyGreen, IxyBlue)
                 final_image.putpixel((x, y), (int(r), int(g), int(b)))
 
@@ -294,6 +306,7 @@ class CreateWindow(QWidget):
         image = image.resize((self.pic1.size().width(), self.pic1.size().height()))
         final_image = im.new('RGB', [image.size[0], image.size[1]], 0x000000)
 
+        # creating arr of decreases pictures
         width = self.pic1.size().width()
         height = self.pic1.size().height()
         images = [image]
@@ -320,7 +333,7 @@ class CreateWindow(QWidget):
                 M1 = M2 / 2
 
                 r, g, b = 255, 255, 255
-                if 0 <= Pi1[0] < image.size[0] and 0 <= Pi1[1] < image.size[1]:
+                if 0 <= Pi1[0] <= image.size[0] and 0 <= Pi1[1] <= image.size[1]:
                     IM1K = images[i - 1].getpixel((math.floor(Pi1[0] / M1), math.floor(Pi1[1] / M1)))
                     IM2K = images[i].getpixel((math.floor(Pi1[0] / M2), math.floor(Pi1[1] / M2)))
 
@@ -329,9 +342,7 @@ class CreateWindow(QWidget):
                     Iblue = int((IM1K[2] * (M2 - K) + IM2K[2] * (K - M1)) / M1)
 
                     r, g, b = IRed, Igreen, Iblue
-
                 final_image.putpixel((x, y), (r, g, b))
-
         final_image.save("temp.jpeg")
 
         # Picture 2
